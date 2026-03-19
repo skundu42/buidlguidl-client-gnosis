@@ -8,7 +8,6 @@ import minimist from "minimist";
 
 let installDir = os.homedir();
 let consensusCheckpoint = null;
-let bgConsensusAddrs;
 
 const argv = minimist(process.argv.slice(2));
 
@@ -23,12 +22,6 @@ if (argv.directory) {
 
 if (argv.consensuscheckpoint) {
   consensusCheckpoint = argv.consensuscheckpoint;
-}
-
-if (argv.bgconsensusaddrs) {
-  bgConsensusAddrs = argv.bgconsensusaddrs
-    .split(",")
-    .map((addr) => addr.trim());
 }
 
 const jwtPath = path.join(installDir, "ethereum_clients", "jwt", "jwt.hex");
@@ -58,7 +51,7 @@ const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
 
 const consensusArgs = [
   "beacon-chain",
-  "--mainnet",
+  "--gnosis",
   "--p2p-udp-port",
   consensusPeerPorts[1],
   "--p2p-quic-port",
@@ -93,13 +86,6 @@ if (consensusCheckpoint) {
   debugToFile(
     "Prysm: Starting without checkpoint-sync-url (database exists or not needed)"
   );
-}
-
-if (argv.bgconsensusaddrs) {
-  bgConsensusAddrs.forEach((peer) => {
-    debugToFile(`Prysm: Adding BG peer: ${peer}`);
-    consensusArgs.push("--peer", peer);
-  });
 }
 
 const consensus = pty.spawn(`${prysmCommand}`, consensusArgs, {

@@ -1,7 +1,7 @@
 {
   "name": "nodes-script",
   "version": "1.0.0",
-  "description": "Assist user in running ethereum node",
+  "description": "Assist user in running gnosis chain node",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -18,7 +18,7 @@
     "macaddress": "^0.5.3",
     "minimist": "^1.2.8",
     "node-fetch": "^3.3.2",
-    "node-pty": "^1.0.0",
+    "node-pty": "^1.1.0",
     "open": "^10.1.0",
     "readline-sync": "^1.4.10",
     "simple-git": "^3.26.0",

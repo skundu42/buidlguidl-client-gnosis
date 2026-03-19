@@ -43,7 +43,8 @@ const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
 const execution = pty.spawn(
   gethCommand,
   [
-    "--mainnet",
+    "--networkid",
+    "100",
     "--syncmode",
     // "snap",
     ...(executionType === "full"

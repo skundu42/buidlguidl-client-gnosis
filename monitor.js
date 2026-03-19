@@ -10,7 +10,6 @@ import { createDiskLine } from "./monitor_components/diskLine.js";
 import { createRethStageGauge } from "./monitor_components/rethStageGauge.js";
 import { createGethStageGauge } from "./monitor_components/gethStageGauge.js";
 import { createChainInfoBox } from "./monitor_components/chainInfoBox.js";
-import { createRpcInfoBox } from "./monitor_components/rpcInfoBox.js";
 import { createExecutionLog } from "./monitor_components/executionLog.js";
 import { createStatusBox } from "./monitor_components/statusBox.js";
 import { installDir } from "./commandLineOptions.js";
@@ -40,7 +39,6 @@ let consensusClientGlobal;
 
 export let statusBox = null;
 export let chainInfoBox = null;
-export let rpcInfoBox = null;
 export let screen = null;
 
 export async function initializeMonitoring(
@@ -87,11 +85,6 @@ export async function initializeMonitoring(
       await getLatestLogFile(executionLogsPath, executionClient)
     );
 
-    // debugToFile(
-    //   `Monitoring ${executionClient} logs from: ${logFilePathExecution}`,
-    //   () => {}
-    // );
-
     setTimeout(() => {
       const logFilePathConsensus = path.join(
         consensusLogsPath,
@@ -105,11 +98,6 @@ export async function initializeMonitoring(
         screen,
         components.gethStageGauge
       );
-
-      // debugToFile(
-      //   `Monitoring ${consensusClient} logs from: ${logFilePathConsensus}`,
-      //   () => {}
-      // );
     }, 3000);
 
     setupLogStreaming(
@@ -125,8 +113,7 @@ export async function initializeMonitoring(
         showHideRethWidgets(
           screen,
           components.rethStageGauge,
-          components.chainInfoBox,
-          components.rpcInfoBox
+          components.chainInfoBox
         );
       }, 5000);
     } else if (executionClient == "geth") {
@@ -134,8 +121,7 @@ export async function initializeMonitoring(
         showHideGethWidgets(
           screen,
           components.gethStageGauge,
-          components.chainInfoBox,
-          components.rpcInfoBox
+          components.chainInfoBox
         );
       }, 5000);
     }
@@ -153,7 +139,6 @@ function setupUI(
 ) {
   screen = blessed.screen();
   suppressMouseOutput(screen);
-  // const grid = new contrib.grid({ rows: 9, cols: 10, screen: screen });
   const grid = new contrib.grid({ rows: 9, cols: 9, screen: screen });
 
   let executionClientLabel;
@@ -181,7 +166,6 @@ function setupUI(
   statusBox = createStatusBox(grid);
   const bandwidthBox = createBandwidthBox(grid);
   chainInfoBox = createChainInfoBox(grid);
-  rpcInfoBox = createRpcInfoBox(grid);
 
   let gethStageGauge, rethStageGauge;
 
@@ -265,25 +249,11 @@ function setupUI(
         }
       }
 
-      let chainInfoBoxGap;
-
       if (screen.children.includes(chainInfoBox)) {
         let chainInfoBoxBottom = chainInfoBox.top + chainInfoBox.height - 1;
-        if (screen.children.includes(rpcInfoBox)) {
-          chainInfoBoxGap = rpcInfoBox.top - chainInfoBoxBottom - 1;
-        } else {
-          chainInfoBoxGap = diskLine.top - chainInfoBoxBottom - 1;
-        }
+        let chainInfoBoxGap = diskLine.top - chainInfoBoxBottom - 1;
         if (chainInfoBoxGap != 0) {
           chainInfoBox.height = chainInfoBox.height + chainInfoBoxGap;
-        }
-      }
-
-      if (screen.children.includes(rpcInfoBox)) {
-        let rpcInfoBoxBottom = rpcInfoBox.top + rpcInfoBox.height - 1;
-        let rpcInfoBoxGap = diskLine.top - rpcInfoBoxBottom - 1;
-        if (rpcInfoBoxGap != 0) {
-          rpcInfoBox.height = rpcInfoBox.height + rpcInfoBoxGap;
         }
       }
 
@@ -318,12 +288,6 @@ function setupUI(
 
   function fixRightMargins(screen) {
     try {
-      // let bigTextRight = bigText.left + bigText.width - 1;
-      // let bigTextGap = ipAddressBox.left - bigTextRight - 1;
-      // if (bigTextGap != 0) {
-      //   bigTextGap.width = bigTextGap.width + bigTextGap;
-      // }
-
       let ipAddressBoxRight = ipAddressBox.left + ipAddressBox.width - 1;
       let ipAddressBoxGap = screen.width - ipAddressBoxRight - 1;
       if (ipAddressBoxGap != 0) {
@@ -359,14 +323,6 @@ function setupUI(
         let chainInfoBoxGap = peerCountGauge.left - chainInfoBoxRight - 1;
         if (chainInfoBoxGap != 0) {
           chainInfoBox.width = chainInfoBox.width + chainInfoBoxGap;
-        }
-      }
-
-      if (screen.children.includes(rpcInfoBox)) {
-        let rpcInfoBoxRight = rpcInfoBox.left + rpcInfoBox.width - 1;
-        let rpcInfoBoxGap = peerCountGauge.left - rpcInfoBoxRight - 1;
-        if (rpcInfoBoxGap != 0) {
-          rpcInfoBox.width = rpcInfoBox.width + rpcInfoBoxGap;
         }
       }
 
@@ -455,7 +411,6 @@ function setupUI(
       gethStageGauge,
       rethStageGauge,
       chainInfoBox,
-      rpcInfoBox,
     },
   };
 }

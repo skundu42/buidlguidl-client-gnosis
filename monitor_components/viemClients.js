@@ -1,17 +1,15 @@
 import { createPublicClient, http } from "viem";
-import { mainnet } from "viem/chains";
-import { BASE_URL } from "../config.js";
-
+import { gnosis } from "viem/chains";
 export const localClient = createPublicClient({
   name: "localClient",
-  chain: mainnet,
+  chain: gnosis,
   transport: http("http://localhost:8545"),
 });
 
 export const mainnetClient = createPublicClient({
   name: "mainnetClient",
-  chain: mainnet,
-  transport: http(`https://mainnet.rpc.buidlguidl.com`, {
+  chain: gnosis,
+  transport: http(`https://rpc.gnosischain.com`, {
     fetchOptions: {
       headers: {
         Origin: "buidlguidl-client",

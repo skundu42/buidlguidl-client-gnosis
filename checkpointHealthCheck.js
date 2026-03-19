@@ -2,21 +2,14 @@ import fs from "fs";
 import path from "path";
 import { debugToFile } from "./helpers.js";
 
-// List of public checkpoint sync URLs
+// List of public Gnosis Chain checkpoint sync URLs
 const CHECKPOINT_URLS = [
-  "https://checkpointz.pietjepuk.net",
-  "https://sync-mainnet.beaconcha.in",
-  "https://beaconstate-mainnet.chainsafe.io",
-  "https://mainnet-checkpoint-sync.stakely.io",
-  "https://mainnet-checkpoint-sync.attestant.io",
-  "https://beaconstate.ethstaker.cc",
-  "https://mainnet.checkpoint.sigp.io",
-  "https://beaconstate.info",
+  "https://checkpoint.gnosischain.com",
 ];
 
-// Current Ethereum slot time (12 seconds per slot, 32 slots per epoch)
-const SECONDS_PER_SLOT = 12;
-const ETHEREUM_GENESIS_TIMESTAMP = 1606824023; // Dec 1, 2020
+// Gnosis Chain slot time (5 seconds per slot, 16 slots per epoch)
+const SECONDS_PER_SLOT = 5;
+const GNOSIS_GENESIS_TIMESTAMP = 1638993340; // Dec 8, 2021
 
 /**
  * Calculate the expected current slot number
@@ -24,7 +17,7 @@ const ETHEREUM_GENESIS_TIMESTAMP = 1606824023; // Dec 1, 2020
 function getCurrentSlot() {
   const now = Math.floor(Date.now() / 1000);
   const slot = Math.floor(
-    (now - ETHEREUM_GENESIS_TIMESTAMP) / SECONDS_PER_SLOT
+    (now - GNOSIS_GENESIS_TIMESTAMP) / SECONDS_PER_SLOT
   );
   return slot;
 }

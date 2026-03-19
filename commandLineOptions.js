@@ -71,19 +71,16 @@ function showHelp() {
     "                                            If not provided, the fastest and most current checkpoint server will be automatically"
   );
   console.log(
-    "                                            selected from 8 public servers (see: https://eth-clients.github.io/checkpoint-sync-endpoints)\n"
+    "                                            selected from Gnosis Chain public checkpoint servers\n"
   );
   console.log(
-    "  -d, --directory <path>                    Specify ethereum client executable, database, and logs directory"
+    "  -d, --directory <path>                    Specify gnosis client executable, database, and logs directory"
   );
   console.log(
     "                                            Default: buidlguidl-client/ethereum_clients\n"
   );
   console.log(
-    "  -o, --owner <eth address>                 Specify a owner eth address to opt in to the points system, distributed RPC network, and Telegram alerts"
-  );
-  console.log(
-    `                                            To set up Telegram alerts for clients crashes, message /start to @BG_Client_Alert_Bot on Telegram\n`
+    "  -o, --owner <address>                     Specify an owner address for identification\n"
   );
   console.log(
     "      --update                              Update the execution and consensus clients to the latest version."

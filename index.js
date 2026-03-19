@@ -6,7 +6,6 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { initializeMonitoring } from "./monitor.js";
 import { installMacLinuxClient } from "./ethereum_client_scripts/install.js";
-import { initializeWebSocketConnection } from "./webSocketConnection.js";
 import {
   executionClient,
   executionType,
@@ -19,16 +18,6 @@ import {
   saveOptionsToFile,
   deleteOptionsFile,
 } from "./commandLineOptions.js";
-import {
-  setTelegramAlertIdentifier,
-  sendTelegramAlert,
-} from "./telegramAlert.js";
-import {
-  fetchBGExecutionPeers,
-  configureBGExecutionPeers,
-  fetchBGConsensusPeers,
-  configureBGConsensusPeers,
-} from "./ethereum_client_scripts/configureBGPeers.js";
 import { getVersionNumber } from "./ethereum_client_scripts/install.js";
 import { debugToFile } from "./helpers.js";
 import {
@@ -40,10 +29,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const lockFilePath = path.join(installDir, "ethereum_clients", "script.lock");
-
-// const CONFIG = {
-//   debugLogPath: path.join(installDir, "ethereum_clients", "debugIndex.log"),
-// };
 
 function createJwtSecret(jwtDir) {
   if (!fs.existsSync(jwtDir)) {
@@ -208,9 +193,6 @@ process.on("unhandledRejection", (reason, promise) => {
   handleExit("unhandledRejection");
 });
 
-let bgConsensusPeers = [];
-let bgConsensusAddrs;
-
 async function startClient(
   clientName,
   executionType,
@@ -229,17 +211,6 @@ async function startClient(
     clientArgs.push("--executiontype", executionType);
     clientCommand = path.join(__dirname, "ethereum_client_scripts/reth.js");
   } else if (clientName === "prysm") {
-    bgConsensusPeers = await fetchBGConsensusPeers();
-    bgConsensusAddrs = await configureBGConsensusPeers(consensusClient);
-
-    if (bgConsensusPeers.length > 0) {
-      clientArgs.push("--bgconsensuspeers", bgConsensusPeers);
-    }
-
-    if (bgConsensusAddrs != null) {
-      clientArgs.push("--bgconsensusaddrs", bgConsensusAddrs);
-    }
-
     if (checkpointUrl != null) {
       clientArgs.push("--consensuscheckpoint", checkpointUrl);
     }
@@ -248,17 +219,6 @@ async function startClient(
 
     clientCommand = path.join(__dirname, "ethereum_client_scripts/prysm.js");
   } else if (clientName === "lighthouse") {
-    bgConsensusPeers = await fetchBGConsensusPeers();
-    bgConsensusAddrs = await configureBGConsensusPeers(consensusClient);
-
-    if (bgConsensusPeers.length > 0) {
-      clientArgs.push("--bgconsensuspeers", bgConsensusPeers);
-    }
-
-    if (bgConsensusAddrs != null) {
-      clientArgs.push("--bgconsensusaddrs", bgConsensusAddrs);
-    }
-
     if (checkpointUrl != null) {
       clientArgs.push("--consensuscheckpoint", checkpointUrl);
     }
@@ -293,20 +253,6 @@ async function startClient(
 
   child.on("exit", (code) => {
     console.log(`🫡 ${clientName} process exited with code ${code}`);
-
-    // Send telegram alert if client exited unexpectedly (not user-initiated shutdown)
-    // Only send alert if isExiting is false, meaning the user didn't close the script
-    if (!isExiting && code !== null) {
-      const machineId = os.hostname();
-      const clientNameCapitalized =
-        clientName.charAt(0).toUpperCase() + clientName.slice(1);
-      const alertMessage = `🔴 ${clientNameCapitalized} crashed on ${machineId} with exit code ${code}!`;
-      sendTelegramAlert("crash", alertMessage).catch((err) => {
-        debugToFile(
-          `startClient(): Failed to send crash alert - ${err.message}`
-        );
-      });
-    }
 
     if (clientName === "geth" || clientName === "reth") {
       executionExited = true;
@@ -350,7 +296,6 @@ function isAlreadyRunning() {
 
 function createLockFile() {
   fs.writeFileSync(lockFilePath, process.pid.toString(), "utf8");
-  // console.log(process.pid.toString())
 }
 
 function removeLockFile() {
@@ -366,30 +311,14 @@ if (["darwin", "linux"].includes(platform)) {
   installMacLinuxClient(executionClient, platform);
   installMacLinuxClient(consensusClient, platform);
 }
-// } else if (platform === "win32") {
-//   installWindowsExecutionClient(executionClient);
-//   installWindowsConsensusClient(consensusClient);
-// }
 
 let messageForHeader = "";
 let runsClient = false;
 
 createJwtSecret(jwtDir);
 
-// Initialize Telegram alert identifier if owner is provided
-if (owner) {
-  setTelegramAlertIdentifier(owner);
-}
-
 const executionClientVer = getVersionNumber(executionClient);
 const consensusClientVer = getVersionNumber(consensusClient);
-
-const wsConfig = {
-  executionClient: executionClient,
-  consensusClient: consensusClient,
-  executionClientVer: executionClientVer,
-  consensusClientVer: consensusClientVer,
-};
 
 if (!isAlreadyRunning()) {
   deleteOptionsFile();
@@ -444,19 +373,11 @@ if (!isAlreadyRunning()) {
     selectedCheckpointUrl
   );
 
-  if (owner !== null) {
-    initializeWebSocketConnection(wsConfig);
-  }
-
   runsClient = true;
   saveOptionsToFile();
 } else {
   messageForHeader = "Dashboard View (client already running)";
   runsClient = false;
-  // Initialize WebSocket connection for secondary instances too
-  if (owner !== null) {
-    initializeWebSocketConnection(wsConfig);
-  }
 }
 
 initializeMonitoring(
@@ -467,12 +388,3 @@ initializeMonitoring(
   consensusClientVer,
   runsClient
 );
-
-let bgExecutionPeers = [];
-
-setTimeout(async () => {
-  bgExecutionPeers = await fetchBGExecutionPeers();
-  await configureBGExecutionPeers(bgExecutionPeers);
-}, 10000);
-
-export { bgExecutionPeers, bgConsensusPeers };

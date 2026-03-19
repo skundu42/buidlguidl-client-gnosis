@@ -15,7 +15,6 @@ import {
 import { exec } from "child_process";
 import { populateRethStageGauge } from "./rethStageGauge.js";
 import { populateGethStageGauge } from "./gethStageGauge.js";
-import { checkIn } from "../webSocketConnection.js";
 import fetch from "node-fetch";
 import { getDiskUsage } from "../getSystemStats.js";
 import { populateChainInfoBox } from "./chainInfoBox.js";
@@ -45,7 +44,7 @@ let lastFetchPromise = null; // Store the promise for the latest fetch
 // Add these at the module level (top of file or before synchronizeAndUpdateWidgets)
 let lastIsFollowingChainHead = true;
 let lastLatestBlock = null;
-let lastSyncModeMainnetFetchTime = 0; // Track when we last fetched mainnet block during sync
+let lastSyncModeGnosisFetchTime = 0; // Track when we last fetched latest block during sync
 
 // Remove hysteresis - no longer needed after fixing competing intervals
 
@@ -176,22 +175,6 @@ export function setupLogStreaming(
             saveHeaderDlProgress(line);
             saveStateDlProgress(line);
             saveChainDlProgress(line);
-          }
-
-          // Check for new block
-          if (client == "geth" || client == "reth") {
-            const blockNumberMatch = line.match(/block=(\d+)/);
-            if (blockNumberMatch) {
-              const currentBlockNumber = parseInt(blockNumberMatch[1], 10);
-              if (currentBlockNumber > lastKnownBlockNumber) {
-                lastKnownBlockNumber = currentBlockNumber;
-                try {
-                  await checkIn(); // Call checkIn when a new block is found
-                } catch (error) {
-                  debugToFile(`Error calling checkIn: ${error}`);
-                }
-              }
-            }
           }
 
           screen.render();
@@ -680,13 +663,10 @@ function checkAllStagesComplete(percentages) {
 export async function showHideRethWidgets(
   screen,
   rethStageGauge,
-  chainInfoBox,
-  rpcInfoBox
+  chainInfoBox
 ) {
   try {
     const syncingStatus = await getEthSyncingStatus();
-
-    // debugToFile(`syncingStatus: ${JSON.stringify(syncingStatus, null, 2)}`);
 
     const allStagesComplete = checkAllStagesComplete(stagePercentages);
 
@@ -697,18 +677,12 @@ export async function showHideRethWidgets(
       if (screen.children.includes(chainInfoBox)) {
         screen.remove(chainInfoBox);
       }
-      if (screen.children.includes(rpcInfoBox)) {
-        screen.remove(rpcInfoBox);
-      }
     } else {
       if (screen.children.includes(rethStageGauge)) {
         screen.remove(rethStageGauge);
       }
       if (!screen.children.includes(chainInfoBox)) {
         screen.append(chainInfoBox);
-      }
-      if (!screen.children.includes(rpcInfoBox) && owner) {
-        screen.append(rpcInfoBox);
       }
     }
   } catch (error) {
@@ -735,11 +709,11 @@ async function isGethEffectivelySynced() {
       return false;
     }
 
-    // Compare with actual mainnet block to determine if effectively synced
+    // Compare with actual latest block to determine if effectively synced
     try {
       let actualLatestBlock;
       const now = Date.now();
-      const timeSinceLastSyncFetch = now - lastSyncModeMainnetFetchTime;
+      const timeSinceLastSyncFetch = now - lastSyncModeGnosisFetchTime;
       let shouldCheckLatestBlock = timeSinceLastSyncFetch >= 120000; // 2 minutes
 
       if (lastLatestBlock === null) {
@@ -749,12 +723,12 @@ async function isGethEffectivelySynced() {
       if (shouldCheckLatestBlock) {
         actualLatestBlock = await fetchLatestBlockWithMutex();
         lastLatestBlock = actualLatestBlock;
-        lastSyncModeMainnetFetchTime = now;
+        lastSyncModeGnosisFetchTime = now;
       } else {
         actualLatestBlock = lastLatestBlock;
       }
 
-      // If current block is close to actual mainnet block, we're effectively synced
+      // If current block is close to actual latest block, we're effectively synced
       const isEffectivelySynced =
         actualLatestBlock !== null &&
         (currentBlock >= Number(actualLatestBlock) ||
@@ -763,9 +737,9 @@ async function isGethEffectivelySynced() {
       return isEffectivelySynced;
     } catch (error) {
       debugToFile(
-        `Error checking mainnet block in isGethEffectivelySynced: ${error}`
+        `Error checking latest block in isGethEffectivelySynced: ${error}`
       );
-      // Fallback: if we can't check mainnet, assume still syncing if we have a sync object
+      // Fallback: if we can't check latest block, assume still syncing if we have a sync object
       return false;
     }
   } catch (error) {
@@ -777,8 +751,7 @@ async function isGethEffectivelySynced() {
 export async function showHideGethWidgets(
   screen,
   gethStageGauge,
-  chainInfoBox,
-  rpcInfoBox
+  chainInfoBox
 ) {
   try {
     const isEffectivelySynced = await isGethEffectivelySynced();
@@ -791,18 +764,12 @@ export async function showHideGethWidgets(
       if (screen.children.includes(chainInfoBox)) {
         screen.remove(chainInfoBox);
       }
-      if (screen.children.includes(rpcInfoBox)) {
-        screen.remove(rpcInfoBox);
-      }
     } else {
       if (screen.children.includes(gethStageGauge)) {
         screen.remove(gethStageGauge);
       }
       if (!screen.children.includes(chainInfoBox)) {
         screen.append(chainInfoBox);
-      }
-      if (!screen.children.includes(rpcInfoBox) && owner) {
-        screen.append(rpcInfoBox);
       }
     }
   } catch (error) {
@@ -936,7 +903,7 @@ export async function synchronizeAndUpdateWidgets(installDir) {
         if (currentBlock === 0 && highestBlock === 0) {
           statusMessage = `SYNC IN PROGRESS`;
         } else {
-          // Check if we're effectively caught up by comparing with actual mainnet block
+          // Check if we're effectively caught up by comparing with actual latest block
           try {
             // Only increment block counter once per block for sync mode too
             if (lastBlockNumber !== currentBlock) {
@@ -948,7 +915,7 @@ export async function synchronizeAndUpdateWidgets(installDir) {
             // During sync mode, use time-based fetching instead of block-based to avoid excessive API calls
             // since currentBlock can increase very rapidly during fast sync
             const now = Date.now();
-            const timeSinceLastSyncFetch = now - lastSyncModeMainnetFetchTime;
+            const timeSinceLastSyncFetch = now - lastSyncModeGnosisFetchTime;
             let shouldCheckLatestBlock = timeSinceLastSyncFetch >= 120000; // 2 minutes = 120,000ms
 
             if (lastLatestBlock === null) {
@@ -958,12 +925,12 @@ export async function synchronizeAndUpdateWidgets(installDir) {
             if (shouldCheckLatestBlock) {
               actualLatestBlock = await fetchLatestBlockWithMutex();
               lastLatestBlock = actualLatestBlock;
-              lastSyncModeMainnetFetchTime = now; // Update the last fetch time for sync mode
+              lastSyncModeGnosisFetchTime = now; // Update the last fetch time for sync mode
             } else {
               actualLatestBlock = lastLatestBlock;
             }
 
-            // If current block is close to actual mainnet block, we're effectively synced
+            // If current block is close to actual latest block, we're effectively synced
             const isEffectivelySynced =
               actualLatestBlock !== null &&
               (currentBlock >= Number(actualLatestBlock) ||
@@ -974,9 +941,9 @@ export async function synchronizeAndUpdateWidgets(installDir) {
               lastIsFollowingChainHead = true;
               statusMessage = `FOLLOWING CHAIN HEAD\nCurrent Block: ${currentBlock.toLocaleString()}`;
             } else {
-              // Still syncing, but show real mainnet block instead of stale highestBlock
+              // Still syncing, show latest Gnosis block instead of stale highestBlock
               lastIsFollowingChainHead = false;
-              statusMessage = `SYNC IN PROGRESS\nCurrent Block: ${currentBlock.toLocaleString()}\nMainnet Block: ${
+              statusMessage = `SYNC IN PROGRESS\nCurrent Block: ${currentBlock.toLocaleString()}\nGnosis Block: ${
                 actualLatestBlock
                   ? Number(actualLatestBlock).toLocaleString()
                   : highestBlock.toLocaleString()
@@ -984,7 +951,7 @@ export async function synchronizeAndUpdateWidgets(installDir) {
             }
           } catch (error) {
             debugToFile(`Error during sync status check: ${error}`);
-            // Fallback to original logic if mainnet fetch fails
+            // Fallback to original logic if latest block fetch fails
             statusMessage = `SYNC IN PROGRESS\nCurrent Block: ${currentBlock.toLocaleString()}\nHighest Block: ${highestBlock.toLocaleString()}`;
           }
         }
@@ -1005,7 +972,7 @@ export async function synchronizeAndUpdateWidgets(installDir) {
           ? blockCounter % 10 === 0
           : true;
         if (lastLatestBlock === null) {
-          shouldCheckLatestBlock = true; // Always fetch on startup or if we have no mainnet block
+          shouldCheckLatestBlock = true; // Always fetch on startup or if we have no latest block
         }
 
         if (shouldCheckLatestBlock) {
@@ -1032,7 +999,7 @@ export async function synchronizeAndUpdateWidgets(installDir) {
         if (isFollowingChainHead) {
           statusMessage = `FOLLOWING CHAIN HEAD\nCurrent Block: ${blockNumber.toLocaleString()}`;
         } else {
-          statusMessage = `CATCHING UP TO HEAD\nLocal Block:   ${blockNumber.toLocaleString()}\nMainnet Block: ${
+          statusMessage = `CATCHING UP TO HEAD\nLocal Block:   ${blockNumber.toLocaleString()}\nGnosis Block: ${
             latestBlock ? latestBlock.toLocaleString() : "Unknown"
           }`;
         }
@@ -1058,7 +1025,7 @@ export async function synchronizeAndUpdateWidgets(installDir) {
           ? blockCounter % 10 === 0
           : true;
         if (lastLatestBlock === null) {
-          shouldCheckLatestBlock = true; // Always fetch on startup or if we have no mainnet block
+          shouldCheckLatestBlock = true; // Always fetch on startup or if we have no latest block
         }
 
         if (shouldCheckLatestBlock) {
@@ -1085,7 +1052,7 @@ export async function synchronizeAndUpdateWidgets(installDir) {
         if (isFollowingChainHead) {
           statusMessage = `FOLLOWING CHAIN HEAD\nCurrent Block: ${blockNumber.toLocaleString()}`;
         } else {
-          statusMessage = `CATCHING UP TO HEAD\nLocal Block:   ${blockNumber.toLocaleString()}\nMainnet Block: ${
+          statusMessage = `CATCHING UP TO HEAD\nLocal Block:   ${blockNumber.toLocaleString()}\nGnosis Block: ${
             latestBlock ? latestBlock.toLocaleString() : "Unknown"
           }`;
         }

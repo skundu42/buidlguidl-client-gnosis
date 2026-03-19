@@ -44,6 +44,8 @@ const execution = pty.spawn(
   `${rethCommand}`,
   [
     "node",
+    "--chain",
+    "gnosis",
     ...(executionType === "archive" ? [] : ["--full"]),
     "--port",
     executionPeerPort,
@@ -76,8 +78,6 @@ const execution = pty.spawn(
     "--ws.port",
     "8546",
     "--prune.bodies.pre-merge",
-    "--prune.receipts.before",
-    "15537394",
   ],
   {
     name: "xterm-color",

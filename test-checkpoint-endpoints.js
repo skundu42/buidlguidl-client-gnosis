@@ -1,15 +1,9 @@
 import fetch from "node-fetch";
 
-// List of checkpoint sync URLs to test
+// List of Gnosis Chain checkpoint sync URLs to test
 const CHECKPOINT_URLS = [
-  "https://checkpointz.pietjepuk.net",
-  "https://sync-mainnet.beaconcha.in",
-  "https://beaconstate-mainnet.chainsafe.io",
-  "https://mainnet-checkpoint-sync.stakely.io",
-  "https://mainnet-checkpoint-sync.attestant.io",
-  "https://beaconstate.ethstaker.cc",
-  "https://mainnet.checkpoint.sigp.io",
-  "https://beaconstate.info",
+  "https://checkpoint.gnosis.gateway.fm",
+  "https://checkpoint.gnosischain.com",
 ];
 
 // Common Beacon API endpoints to test

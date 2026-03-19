@@ -25,9 +25,9 @@ export function createChainInfoBox(grid) {
   return chainInfoBox;
 }
 
-// DAI and WETH contract addresses
-const DAI_CONTRACT_ADDRESS = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
-const WETH_CONTRACT_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+// WXDAI and GNO contract addresses on Gnosis Chain
+const WXDAI_CONTRACT_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d";
+const GNO_CONTRACT_ADDRESS = "0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb";
 
 // ABI to interact with the balanceOf function in an ERC-20 contract
 const ERC20_ABI = [
@@ -40,38 +40,38 @@ const ERC20_ABI = [
   },
 ];
 
-// Address to check
-const addressToCheck = "0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11";
+// SushiSwap GNO/WXDAI pool on Gnosis Chain
+const addressToCheck = "0x321704900D52F44180068cAA73778d5Cd60695A6";
 
 function formatBalance(balance, decimals = 18) {
   return (BigInt(balance) / BigInt(10 ** decimals)).toString();
 }
 
-async function getEthPrice(blockNumber) {
+async function getGnoPrice(blockNumber) {
   try {
-    const daiBalance = await localClient.readContract({
-      address: DAI_CONTRACT_ADDRESS,
+    const wxdaiBalance = await localClient.readContract({
+      address: WXDAI_CONTRACT_ADDRESS,
       abi: ERC20_ABI,
       functionName: "balanceOf",
       args: [addressToCheck],
-      blockNumber: blockNumber, // Specify the block number here
+      blockNumber: blockNumber,
     });
 
-    const wethBalance = await localClient.readContract({
-      address: WETH_CONTRACT_ADDRESS,
+    const gnoBalance = await localClient.readContract({
+      address: GNO_CONTRACT_ADDRESS,
       abi: ERC20_ABI,
       functionName: "balanceOf",
       args: [addressToCheck],
-      blockNumber: blockNumber, // Specify the block number here
+      blockNumber: blockNumber,
     });
 
-    const ratio = formatBalance(daiBalance) / formatBalance(wethBalance);
+    const ratio = formatBalance(wxdaiBalance) / formatBalance(gnoBalance);
     const roundedRatio = ratio.toFixed(2);
 
     return roundedRatio;
   } catch (error) {
     debugToFile(`Error fetching token balances: ${error}`);
-    return null; // Return null or a default value in case of an error
+    return null;
   }
 }
 
@@ -86,7 +86,7 @@ async function getBatchBlockInfo() {
         blockNumbers: [],
         transactionCounts: [],
         gasPrices: [],
-        ethPrices: [],
+        gnoPrices: [],
       };
     }
 
@@ -107,32 +107,32 @@ async function getBatchBlockInfo() {
       )
     );
 
-    // Extract transaction counts, gas prices, and ETH prices from the blocks
+    // Extract transaction counts, gas prices, and GNO prices from the blocks
     const transactionCounts = blocks.map((block) => block.transactions.length);
     const gasPrices = blocks.map(
       (block) => (Number(block.baseFeePerGas) / 10 ** 9).toFixed(4) // Convert gas prices to Gwei
     );
 
-    // Fetch ETH prices concurrently for each block
-    const ethPrices = await Promise.all(
-      blockNumbers.map((blockNumber) => getEthPrice(blockNumber))
+    // Fetch GNO prices concurrently for each block
+    const gnoPrices = await Promise.all(
+      blockNumbers.map((blockNumber) => getGnoPrice(blockNumber))
     );
 
-    return { blockNumbers, transactionCounts, gasPrices, ethPrices };
+    return { blockNumbers, transactionCounts, gasPrices, gnoPrices };
   } catch (error) {
     debugToFile(`getBatchBlockInfo(): ${error}`);
     return {
       blockNumbers: [],
       transactionCounts: [],
       gasPrices: [],
-      ethPrices: [],
+      gnoPrices: [],
     };
   }
 }
 
 export async function populateChainInfoBox() {
   try {
-    const { blockNumbers, transactionCounts, gasPrices, ethPrices } =
+    const { blockNumbers, transactionCounts, gasPrices, gnoPrices } =
       await getBatchBlockInfo();
 
     // Check if all arrays are empty
@@ -140,7 +140,7 @@ export async function populateChainInfoBox() {
       blockNumbers.length === 0 &&
       transactionCounts.length === 0 &&
       gasPrices.length === 0 &&
-      ethPrices.length === 0
+      gnoPrices.length === 0
     ) {
       chainInfoBox.setContent("INITIALIZING...");
       return;
@@ -157,7 +157,7 @@ export async function populateChainInfoBox() {
       content += `{center}{bold}{green-fg}${blockNumbers[
         i
       ].toLocaleString()}{/green-fg}{/bold}{/center}\n`;
-      content += `{bold}{blue-fg}ETH $:{/blue-fg}{/bold} ${ethPrices[i]}\n`;
+      content += `{bold}{blue-fg}GNO $:{/blue-fg}{/bold} ${gnoPrices[i]}\n`;
       content += `{bold}{blue-fg}GAS:{/blue-fg}{/bold}   ${gasPrices[i]}\n`;
       content += `{bold}{blue-fg}# TX:{/blue-fg}{/bold}  ${transactionCounts[i]}\n`;
       content += separator;

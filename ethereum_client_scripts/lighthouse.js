@@ -8,8 +8,6 @@ import minimist from "minimist";
 
 let installDir = os.homedir();
 let consensusCheckpoint = null;
-let bgConsensusPeers;
-let bgConsensusAddrs;
 
 const argv = minimist(process.argv.slice(2));
 
@@ -24,18 +22,6 @@ if (argv.directory) {
 
 if (argv.consensuscheckpoint) {
   consensusCheckpoint = argv.consensuscheckpoint;
-}
-
-if (argv.bgconsensuspeers) {
-  bgConsensusPeers = argv.bgconsensuspeers
-    .split(",")
-    .map((peer) => peer.trim())
-    .filter((peer) => peer) // Filter out any empty strings
-    .join(",");
-}
-
-if (argv.bgconsensusaddrs) {
-  bgConsensusAddrs = argv.bgconsensusaddrs;
 }
 
 const jwtPath = path.join(installDir, "ethereum_clients", "jwt", "jwt.hex");
@@ -71,7 +57,7 @@ const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
 const consensusArgs = [
   "bn",
   "--network",
-  "mainnet",
+  "gnosis",
   "--port",
   consensusPeerPorts[0],
   "--quic-port",
@@ -107,16 +93,6 @@ if (consensusCheckpoint) {
   debugToFile(
     "Lighthouse: Starting without checkpoint-sync-url (database exists or not needed)"
   );
-}
-
-if (argv.bgconsensuspeers) {
-  debugToFile(`Lighthouse: Added Trusted BG Peers: ${bgConsensusPeers}`);
-  consensusArgs.push("--trusted-peers", bgConsensusPeers);
-}
-
-if (argv.bgconsensusaddrs) {
-  debugToFile(`Lighthouse: Added BG Peer Addresses: ${bgConsensusAddrs}`);
-  consensusArgs.push("--libp2p-addresses", bgConsensusAddrs);
 }
 
 const consensus = pty.spawn(`${lighthouseCommand}`, consensusArgs, {
